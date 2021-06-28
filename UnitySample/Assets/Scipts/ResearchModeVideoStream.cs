@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using System;
 using System.Runtime.InteropServices;
+using TMPro;
 
 #if ENABLE_WINMD_SUPPORT
 using HL2UnityPlugin;
@@ -46,6 +47,9 @@ public class ResearchModeVideoStream : MonoBehaviour
     public Color pointColor = Color.white;
     private PointCloudRenderer pointCloudRenderer;
 
+    [SerializeField]
+    TextMeshPro TempText;
+
     void Start()
     {
         depthMediaMaterial = depthPreviewPlane.GetComponent<MeshRenderer>().material;
@@ -72,6 +76,9 @@ public class ResearchModeVideoStream : MonoBehaviour
 
         tcpClient = GetComponent<TCPClient>();
 
+        string tmpString = "hi this works!";
+        TempText.text = tmpString;
+
 #if ENABLE_WINMD_SUPPORT
         researchMode = new HL2ResearchMode();
         researchMode.InitializeDepthSensor();
@@ -85,6 +92,10 @@ public class ResearchModeVideoStream : MonoBehaviour
         //researchMode.StartLongDepthSensorLoop(); 
         
         researchMode.StartSpatialCamerasFrontLoop();
+
+        // For accelerometer
+        researchMode.InitializeAllSensors();
+        researchMode.StartAccelSensorLoop();
 #endif
     }
 
@@ -92,9 +103,15 @@ public class ResearchModeVideoStream : MonoBehaviour
     void LateUpdate()
     {
 #if ENABLE_WINMD_SUPPORT
+
+        // update accel reading
+        string aString = "X: " + researchMode.GetAccelValues()[0].ToString("F1") + "\nY: " + researchMode.GetAccelValues()[1].ToString("F1") + "\nZ: " + researchMode.GetAccelValues()[2].ToString("F1");
+        TempText.text = aString;
+    
         // update depth map texture
         if (startRealtimePreview && researchMode.DepthMapTextureUpdated())
         {
+
             byte[] frameTexture = researchMode.GetDepthMapTextureBuffer();
             if (frameTexture.Length > 0)
             {
@@ -129,6 +146,8 @@ public class ResearchModeVideoStream : MonoBehaviour
                 shortAbImageMediaTexture.LoadRawTextureData(shortAbImageFrameData);
                 shortAbImageMediaTexture.Apply();
             }
+
+            SaveAHATSensorDataEvent(); // added
         }
         // update long depth map texture
         //if (researchMode.LongDepthMapTextureUpdated())
@@ -216,7 +235,7 @@ public class ResearchModeVideoStream : MonoBehaviour
         startRealtimePreview = !startRealtimePreview;
     }
 
-    bool renderPointCloud = true;
+    bool renderPointCloud = false;
     public void TogglePointCloudEvent()
     {
         renderPointCloud = !renderPointCloud;

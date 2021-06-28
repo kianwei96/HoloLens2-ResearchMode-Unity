@@ -18,9 +18,12 @@ namespace HL2UnityPlugin
 		UInt8[] GetRFCameraBuffer();
 
         Single[] GetCenterPoint();
+        //Single[] GetDepthSendorPosition(); //added, typo?
         Single[] GetDepthSensorPosition();
+        Int32 GetBufferSize(); //added
         Int32 GetDepthBufferSize();
         Int32 GetLongDepthBufferSize();
+        String PrintResolution(); //added
         String PrintDepthResolution();
         String PrintDepthExtrinsics();
 		String PrintLFResolution();
@@ -34,6 +37,11 @@ namespace HL2UnityPlugin
         Boolean LongDepthMapTextureUpdated();
 		Boolean LFImageUpdated();
 		Boolean RFImageUpdated();
+
+        Single[] GetAccelValues(); //added
+
+        void InitializeAllSensors(); //added
+        void StartAccelSensorLoop(); //added
 
         void InitializeDepthSensor();
         void InitializeLongDepthSensor();

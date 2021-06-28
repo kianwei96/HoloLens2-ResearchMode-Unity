@@ -5,14 +5,27 @@ import os
 import numpy as np
 import cv2
 import time
+import threading
+
+def recvall(size):
+    msg = bytes()
+    while len(msg) < size:
+        part = self.socket.recv(size - len(msg))
+        if part == '':
+            break  # the connection is closed
+        msg += part
+    return msg
 
 def tcp_server():
     serverHost = '' # localhost
-    serverPort = 9090
+    serverPort = 1234
     save_folder = 'data/'
 
     if ~os.path.isdir(save_folder):
-        os.mkdir(save_folder)
+        try:
+            os.mkdir(save_folder)
+        except:
+            pass
 
     # Create a socket
     sSock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -39,15 +52,25 @@ def tcp_server():
 
     print('Connected with ' + addr[0] + ':' + str(addr[1]))
 
+    frames_received = 0
     while True:
         # Receiving from client
         try:
-            data = conn.recv(512*512*4+100)
+            
+            msg_size = 512*512*4+5
+            data = bytes()
+            while len(data) < msg_size:
+                part = conn.recv(msg_size - len(data))
+                if part == '':
+                    break
+                data += part
+            
+            #data = conn.recv(#512*512*4+100) #+100/+5
             if len(data)==0:
                 continue
+            #print("data packet received: ", len(data))
             header = data[0:1].decode('utf-8')
-            print('--------------------------\nHeader: ' + header)
-            print(len(data))
+            #print('--------------------------\nHeader: ' + header)
 
             if header == 's':
                 # get the init transform
@@ -59,7 +82,11 @@ def tcp_server():
                 cv2.imwrite(save_folder + timestamp+'_depth.tiff', depth_img_np)
                 cv2.imwrite(save_folder + timestamp+'_abImage.tiff', ab_img_np)
                 print('Image with ts ' + timestamp + ' is saved')
-        except:
+                frames_received += 1
+                print(frames_received)
+                
+        except Exception as e:
+            print(e)
             break
     
     print('Closing socket...')

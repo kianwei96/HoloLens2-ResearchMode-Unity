@@ -1,0 +1,92 @@
+Build differences compard to original.
+For every build, modify Plugins to UWP/ARM64
+In manifest, add:
+xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+rescap to ignorable
+<rescap:Capability Name="perceptionSensorsExperimental" />
+<DeviceCapability Name="backgroundSpatialPerception" />
+Build for ARM64 Release
+Deploy via IP Address (now 192.168.137.176, 192.168.137.125)
+
+Build1:
+# DLL modified to access Accel, didn't break the original DLL, not tested to work for Accel
+# Starting off as PointCloud=false, to find out where is the control panel hiding
+(ok)
+
+Build2:
+# DLL modified to access Accel, didn't break the original DLL, not tested to work for Accel
+# tarting off as PointCloud=false, to find out where is the control panel hiding
+# Buttons moved to parent MainCamera instead of MixedRealityPlayspace
+# Buttons Position changed from 0,0,0.6 to 0.05,0,0.6
+# Buttons Scale changed from 1,1,1 to 1.5,1.5,1.5
+# Turned off - SolverHandler, RadialView, FollowMeToggle
+# TempText created and moved to under Buttons.
+(no feed)
+
+Build3:
+# same as build 2, but uncheck/disable TempText.
+(works)
+
+Build4:
+# back to build2, by reenabling TempText.
+(works, but text has double vision)
+
+Build5:
+# build4, but player settings -> XR -> Stereo rendering set to single pass instead of multi
+(still  has some double vision for text)
+
+Build6:
+# build4 (multipass rendering), but shifted text:
+# z from 2.4 to 0.8
+# y from -0.3 to 
+# size from 5 to 1
+(kind of resolved, by making it closer and smaller)
+
+Build7:
+# build6, but
+# RMVS.cs added TempText static change at start of execution.
+# in unity, rmcontroller's script call linked to temptext object
+(works)
+
+Build8:
+# build7, but
+# added rm.StartAccelSensorLoop() to start() in rmvs.cs
+# added text update call to lateupdate() in rmvs.cs
+(fail, startaccelsensorloop(), startstream() no permission)
+
+Build9:
+# build8, but
+# added researchMode.InitializeAllSensors() to start() in rmvs.cs
+(works, string too tall - 3 levels, overlapped by ui)
+
+Build10:
+# build9, but
+# string moved down from -0.1 to -0.18 (y)
+# change acquisition method in plugin as below:
+# to struct, 0,1,2 now shows temperature, actual-y accel and number of samples instead of direct float3.
+# see if it breaks accel floats
+(32.6, -0.5, 8(9)3.0 respectively. temperature(x) climbs steadily. accel(y) corresponds to movement. samples(z) unchanged)
+
+Build11:
+# build10, but
+# changed RMVS.cs to call rm.saveahatsensordataevent()
+# in unity researchmodecontroller, changed ip to 137.1, port 1234
+# in tcpserver.py, changed port to 1234
+# in tcpserver.py, replaced recv with "recvall", reduced offset to +5 from +100 - 1 for "s", 4 for int32.
+(IR images coming in fast, but not all are saved)
+
+Build11b:
+# no change to build11 on the hololens side.
+# tcpserver.py multithreaded as per https://www.programmersought.com/article/24067427272/
+
+
+
+To Do:
+try threading for image writing https://www.programmersought.com/article/24067427272/
+access camera extrinsics, intrinsics, print in app
+access timestamps, print in app
+send over timestamps as well, save as file name
+send over extrinsics as well, separate files
+send over intrinsics/r2w once
+
+self ip: 192.168.137.1

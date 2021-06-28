@@ -9,6 +9,8 @@ HMODULE LoadLibraryA(
 
 static ResearchModeSensorConsent camAccessCheck;
 static HANDLE camConsentGiven;
+static ResearchModeSensorConsent imuAccessCheck;
+static HANDLE imuConsentGiven;
 
 using namespace DirectX;
 using namespace winrt::Windows::Perception;
@@ -23,6 +25,7 @@ namespace winrt::HL2UnityPlugin::implementation
     {
         // Load Research Mode library
         camConsentGiven = CreateEvent(nullptr, true, false, nullptr);
+        imuConsentGiven = CreateEvent(nullptr, true, false, nullptr); //added
         HMODULE hrResearchMode = LoadLibraryA("ResearchModeAPI");
         HRESULT hr = S_OK;
 
@@ -52,6 +55,7 @@ namespace winrt::HL2UnityPlugin::implementation
 
         winrt::check_hresult(m_pSensorDevice->QueryInterface(IID_PPV_ARGS(&m_pSensorDeviceConsent)));
         winrt::check_hresult(m_pSensorDeviceConsent->RequestCamAccessAsync(HL2ResearchMode::CamAccessOnComplete));
+        winrt::check_hresult(m_pSensorDeviceConsent->RequestIMUAccessAsync(HL2ResearchMode::ImuAccessOnComplete));
 
         m_pSensorDevice->DisableEyeSelection();
 
@@ -60,9 +64,20 @@ namespace winrt::HL2UnityPlugin::implementation
         winrt::check_hresult(m_pSensorDevice->GetSensorDescriptors(m_sensorDescriptors.data(), m_sensorDescriptors.size(), &sensorCount));
     }
 
+    void HL2ResearchMode::InitializeAllSensors() //added, should be renamed next time
+    {
+        for (auto sensorDescriptor : m_sensorDescriptors)
+        {
+            if (sensorDescriptor.sensorType == IMU_ACCEL)
+            {
+                winrt::check_hresult(m_pSensorDevice->GetSensor(sensorDescriptor.sensorType, &m_pAccelSensor));
+            }
+        }
+    }
+
     void HL2ResearchMode::InitializeDepthSensor() 
     {
-       
+        //added (jk). missing here?
         for (auto sensorDescriptor : m_sensorDescriptors)
         {
             if (sensorDescriptor.sensorType == DEPTH_AHAT)
@@ -112,6 +127,11 @@ namespace winrt::HL2UnityPlugin::implementation
         }
     }
 
+    void HL2ResearchMode::StartAccelSensorLoop() //added
+    {
+        m_pAccelUpdateThread = new std::thread(HL2ResearchMode::AccelSensorLoop, this);
+    }
+
     void HL2ResearchMode::StartDepthSensorLoop() 
     {
         //std::thread th1([this] {this->DepthSensorLoopTest(); });
@@ -121,6 +141,78 @@ namespace winrt::HL2UnityPlugin::implementation
         }
 
         m_pDepthUpdateThread = new std::thread(HL2ResearchMode::DepthSensorLoop, this);
+    }
+
+    void HL2ResearchMode::AccelSensorLoop(HL2ResearchMode* pHL2ResearchMode) //added
+    {
+        // prevent starting loop for multiple times
+        if (!pHL2ResearchMode->m_accelSensorLoopStarted) // m_gyroSensorLoopStarted
+        {
+            pHL2ResearchMode->m_accelSensorLoopStarted = true; // m_gyroSensorLoopStarted
+        }
+        else {
+            return;
+        }
+
+        pHL2ResearchMode->m_pAccelSensor->OpenStream();
+
+        try
+        {
+            while (pHL2ResearchMode->m_accelSensorLoopStarted)
+            {
+                IResearchModeSensorFrame* pAccelSensorFrame = nullptr;
+                IResearchModeAccelFrame* pAccelFrame = nullptr;
+
+                HRESULT hr = S_OK;
+
+                pHL2ResearchMode->m_pAccelSensor->GetNextBuffer(&pAccelSensorFrame);
+                hr = pAccelSensorFrame->QueryInterface(IID_PPV_ARGS(&pAccelFrame));
+
+                if (SUCCEEDED(hr))
+                {
+                    const AccelDataStruct* pAccelBuffer; // added pull more data
+                    size_t BufferOutLength; // added pull more data
+                    hr = pAccelFrame->GetCalibratedAccelarationSamples(&pAccelBuffer, &BufferOutLength);
+                    if (FAILED(hr)) {
+                        return;
+                    }
+                    pHL2ResearchMode->m_accelValues[2] = BufferOutLength;
+                    pHL2ResearchMode->m_accelValues[1] = pAccelBuffer[0].AccelValues[1];
+                    pHL2ResearchMode->m_accelValues[0] = pAccelBuffer[0].temperature;
+                    pAccelFrame->Release();
+
+                    // original if SUCCEEDED(hr) here:
+
+                    //DirectX::XMFLOAT3 m_accelSample;
+                    //hr = pAccelFrame->GetCalibratedAccelaration(&m_accelSample);
+                    //if (FAILED(hr))
+                    //{
+                    //    return;
+                    //}
+
+                    //pHL2ResearchMode->m_accelValues[0] = m_accelSample.x;
+                    //pHL2ResearchMode->m_accelValues[1] = m_accelSample.y;
+                    //pHL2ResearchMode->m_accelValues[2] = m_accelSample.z;
+
+                    //pAccelFrame->Release();
+                }
+            }
+        }
+        catch (...) {}
+
+        pHL2ResearchMode->m_pAccelSensor->CloseStream();
+        pHL2ResearchMode->m_pAccelSensor->Release();
+        pHL2ResearchMode->m_pAccelSensor = nullptr;
+        pHL2ResearchMode->m_pSensorDevice->Release();
+        pHL2ResearchMode->m_pSensorDevice = nullptr;
+        pHL2ResearchMode->m_pSensorDeviceConsent->Release();
+        pHL2ResearchMode->m_pSensorDeviceConsent = nullptr;
+    }
+
+    com_array<float> HL2ResearchMode::GetAccelValues() //added
+    {
+        com_array<float> accelValues = com_array<float>(std::move_iterator(m_accelValues), std::move_iterator(m_accelValues + 3));
+        return accelValues;
     }
 
     void HL2ResearchMode::DepthSensorLoop(HL2ResearchMode* pHL2ResearchMode)
@@ -575,7 +667,15 @@ namespace winrt::HL2UnityPlugin::implementation
         SetEvent(camConsentGiven);
     }
 
+    void HL2ResearchMode::ImuAccessOnComplete(ResearchModeSensorConsent consent) //added
+    {
+        imuAccessCheck = consent;
+        SetEvent(imuConsentGiven);
+    }
+
     inline UINT16 HL2ResearchMode::GetCenterDepth() {return m_centerDepth;}
+
+    inline int HL2ResearchMode::GetBufferSize() { return m_bufferSize; } //added
 
     inline int HL2ResearchMode::GetDepthBufferSize() { return m_depthBufferSize; }
 
@@ -592,6 +692,12 @@ namespace winrt::HL2UnityPlugin::implementation
 	inline bool HL2ResearchMode::LFImageUpdated() { return m_LFImageUpdated; }
 
 	inline bool HL2ResearchMode::RFImageUpdated() { return m_RFImageUpdated; }
+
+    hstring HL2ResearchMode::PrintResolution()
+    {
+        std::string res_c_ctr = std::to_string(m_resolution.Height) + "x" + std::to_string(m_resolution.Width) + "x" + std::to_string(m_resolution.BytesPerPixel);
+        return winrt::to_hstring(res_c_ctr);// m_resolution.Width
+    }
 
     hstring HL2ResearchMode::PrintDepthResolution()
     {

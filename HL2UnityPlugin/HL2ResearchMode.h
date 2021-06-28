@@ -21,10 +21,14 @@ namespace winrt::HL2UnityPlugin::implementation
     {
         HL2ResearchMode();
 
+        com_array<float> GetAccelValues(); //added
+
         UINT16 GetCenterDepth();
         int GetDepthBufferSize();
         int GetLongDepthBufferSize();
+        int GetBufferSize(); //added
         hstring PrintDepthResolution();
+        hstring PrintResolution(); //added
         hstring PrintDepthExtrinsics();
 		hstring PrintLFResolution();
 		hstring PrintLFExtrinsics();
@@ -34,7 +38,9 @@ namespace winrt::HL2UnityPlugin::implementation
         void InitializeDepthSensor();
         void InitializeLongDepthSensor();
         void InitializeSpatialCamerasFront();
+        void InitializeAllSensors(); //added
 
+        void StartAccelSensorLoop(); //added
         void StartDepthSensorLoop();
         void StartLongDepthSensorLoop();
         void StartSpatialCamerasFrontLoop();
@@ -75,6 +81,10 @@ namespace winrt::HL2UnityPlugin::implementation
         UINT8* m_longDepthMapTexture = nullptr;
 		UINT8* m_LFImage = nullptr;
 		UINT8* m_RFImage = nullptr;
+
+        IResearchModeSensor* m_pAccelSensor = nullptr; //added
+        float m_accelValues[3]{ 0,0,0 }; //added
+
         IResearchModeSensor* m_depthSensor = nullptr;
         IResearchModeCameraSensor* m_pDepthCameraSensor = nullptr;
         IResearchModeSensor* m_longDepthSensor = nullptr;
@@ -83,6 +93,7 @@ namespace winrt::HL2UnityPlugin::implementation
         IResearchModeCameraSensor* m_LFCameraSensor = nullptr;
         IResearchModeSensor* m_RFSensor = nullptr;
         IResearchModeCameraSensor* m_RFCameraSensor = nullptr;
+        ResearchModeSensorResolution m_resolution; //added
         ResearchModeSensorResolution m_depthResolution;
         ResearchModeSensorResolution m_longDepthResolution;
         ResearchModeSensorResolution m_LFResolution;
@@ -92,6 +103,7 @@ namespace winrt::HL2UnityPlugin::implementation
         IResearchModeSensorDeviceConsent* m_pSensorDeviceConsent = nullptr;
         Windows::Perception::Spatial::SpatialLocator m_locator = 0;
         Windows::Perception::Spatial::SpatialCoordinateSystem m_refFrame = nullptr;
+        std::atomic_int m_bufferSize = 0; //added
         std::atomic_int m_depthBufferSize = 0;
         std::atomic_int m_longDepthBufferSize = 0;
         std::atomic_int m_LFbufferSize = 0;
@@ -99,6 +111,7 @@ namespace winrt::HL2UnityPlugin::implementation
         std::atomic_uint16_t m_centerDepth = 0;
         float m_centerPoint[3]{ 0,0,0 };
         float m_depthSensorPosition[3]{ 0,0,0 };
+        std::atomic_bool m_accelSensorLoopStarted = false; //added
         std::atomic_bool m_depthSensorLoopStarted = false;
         std::atomic_bool m_longDepthSensorLoopStarted = false;
         std::atomic_bool m_spatialCamerasFrontLoopStarted = false;
@@ -112,10 +125,12 @@ namespace winrt::HL2UnityPlugin::implementation
 
         float m_roiBound[3]{ 0,0,0 };
         float m_roiCenter[3]{ 0,0,0 };
+        static void AccelSensorLoop(HL2ResearchMode* pHL2ResearchMode); //added
         static void DepthSensorLoop(HL2ResearchMode* pHL2ResearchMode);
         static void LongDepthSensorLoop(HL2ResearchMode* pHL2ResearchMode);
         static void SpatialCamerasFrontLoop(HL2ResearchMode* pHL2ResearchMode);
         static void CamAccessOnComplete(ResearchModeSensorConsent consent);
+        static void ImuAccessOnComplete(ResearchModeSensorConsent consent); //added
         std::string MatrixToString(DirectX::XMFLOAT4X4 mat);
         DirectX::XMFLOAT4X4 m_depthCameraPose;
         DirectX::XMMATRIX m_depthCameraPoseInvMatrix;
@@ -125,6 +140,7 @@ namespace winrt::HL2UnityPlugin::implementation
         DirectX::XMMATRIX m_LFCameraPoseInvMatrix;
         DirectX::XMFLOAT4X4 m_RFCameraPose;
         DirectX::XMMATRIX m_RFCameraPoseInvMatrix;
+        std::thread* m_pAccelUpdateThread; //added
         std::thread* m_pDepthUpdateThread;
         std::thread* m_pLongDepthUpdateThread;
         std::thread* m_pSpatialCamerasFrontUpdateThread;
