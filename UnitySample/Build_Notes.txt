@@ -115,8 +115,7 @@ Build17:
 
 
 To Do:
-
-send over depth ticks, use as file names - 30/6
+refactor code to allow saving and rendering to be independent
 send over temp and temp ticks, print in python, save in txt
 
 access camera extrinsics, (intrinsics), print in app
@@ -129,3 +128,12 @@ send over rgb data, imgshow in python
 send over rgb ticks, use as file names
 
 self ip: 192.168.137.1
+
+
+60 seconds - 980 depth frames
+60 seconds - 1156 depth frames
+60 seconds - 741 depth frames
+60 seconds - 957 depth frames
+16 fps
+
+

@@ -49,7 +49,7 @@ def tcp_server():
     while True:
         # Receiving from client
         
-        if time.time() - experiment_timer > 10:
+        if time.time() - experiment_timer > 60:
             print("experiment over")
             break        
         
@@ -79,10 +79,7 @@ def tcp_server():
                 ab_img_np = np.frombuffer(data[5+N:5+2*N], np.uint16).reshape((512,512))
                 #timestamp = str(int(time.time()))
                 timestamp = int.from_bytes(data[5+2*N:5+8+2*N], byteorder='big')
-                ts.append(data)
-                if frames_received < 10:
-                    print(timestamp)
-                
+                ts.append(timestamp)   
                 cv2.imwrite(save_folder + str(timestamp) + str(frames_received) + '_depth.tiff', depth_img_np)
                 cv2.imwrite(save_folder + str(timestamp) + str(frames_received) + '_abImage.tiff', ab_img_np)
                 #print('Image with ts ' + timestamp + ' is saved')
