@@ -56,6 +56,7 @@ namespace winrt::HL2UnityPlugin::implementation
 
         void StopAllSensorDevice();
 
+        bool DepthMapDataUpdated();
         bool DepthMapTextureUpdated();
         bool ShortAbImageTextureUpdated();
         bool PointCloudUpdated();
@@ -128,6 +129,7 @@ namespace winrt::HL2UnityPlugin::implementation
         std::atomic_bool m_depthSensorLoopStarted = false;
         std::atomic_bool m_longDepthSensorLoopStarted = false;
         std::atomic_bool m_spatialCamerasFrontLoopStarted = false;
+        std::atomic_bool m_depthDataUpdated = false;
         std::atomic_bool m_depthMapTextureUpdated = false;
         std::atomic_bool m_shortAbImageTextureUpdated = false;
         std::atomic_bool m_longDepthMapTextureUpdated = false;

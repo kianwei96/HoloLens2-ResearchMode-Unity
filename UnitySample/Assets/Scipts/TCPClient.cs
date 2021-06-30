@@ -99,7 +99,7 @@ public class TCPClient : MonoBehaviour
         lastMessageSent = true;
     }
 
-    public async void SendUINT16Async(ushort[] data1, ushort[] data2, ulong data3)
+    public async void SendDepthAsync(ushort[] data1, ushort[] data2, ulong data3)
     {
         if (!lastMessageSent) return;
         lastMessageSent = false;

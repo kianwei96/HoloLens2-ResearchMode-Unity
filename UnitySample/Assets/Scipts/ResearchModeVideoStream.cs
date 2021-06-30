@@ -99,79 +99,68 @@ public class ResearchModeVideoStream : MonoBehaviour
 #endif
     }
 
+    void FixedUpdate()
+    {
+#if ENABLE_WINMD_SUPPORT
+        if (researchMode.DepthMapDataUpdated())
+        {
+            SaveAHATSensorDataEvent(); // send data
+        }
+#endif
+    }
+
     bool startRealtimePreview = true;
     void LateUpdate()
     {
 #if ENABLE_WINMD_SUPPORT
 
         // update accel reading
-        string depthTiming = researchMode.GetTimestampTest().ToString();
-        string accelTiming = researchMode.GetAccelTimestamp().ToString();
-        string aString = "Temp: " + researchMode.GetAccelValues()[0].ToString("F1") + "\nA-Time: " + accelTiming + "\nD-Time: " + depthTiming;
-        depthTiming = "reset value";
-        accelTiming = "reset value";
+        // string accelTiming = researchMode.GetAccelTimestamp().ToString();
+        string aString = "Temp: " + researchMode.GetAccelValues()[0].ToString("F1");
         TempText.text = aString;
-    
-        // update depth map texture
-        if (startRealtimePreview && researchMode.DepthMapTextureUpdated())
-        {
 
+        if (researchMode.DepthMapTextureUpdated()) // if new data
+        {
             byte[] frameTexture = researchMode.GetDepthMapTextureBuffer();
-            if (frameTexture.Length > 0)
+            byte[] frameTexture2 = researchMode.GetShortAbImageTextureBuffer();
+            if (startRealtimePreview)
             {
-                if (depthFrameData == null)
+                // render depth map
+                if (frameTexture.Length > 0)
                 {
-                    depthFrameData = frameTexture;
-                }
-                else
-                {
-                    System.Buffer.BlockCopy(frameTexture, 0, depthFrameData, 0, depthFrameData.Length);
+                    if (depthFrameData == null)
+                    {
+                        depthFrameData = frameTexture;
+                    }
+                    else
+                    {
+                        System.Buffer.BlockCopy(frameTexture, 0, depthFrameData, 0, depthFrameData.Length);
+                    }
+
+                    depthMediaTexture.LoadRawTextureData(depthFrameData);
+                    depthMediaTexture.Apply();
                 }
 
-                depthMediaTexture.LoadRawTextureData(depthFrameData);
-                depthMediaTexture.Apply();
+                // render brightness map
+                if (frameTexture2.Length > 0)
+                {
+                    if (shortAbImageFrameData == null)
+                    {
+                        shortAbImageFrameData = frameTexture2;
+                    }
+                    else
+                    {
+                        System.Buffer.BlockCopy(frameTexture2, 0, shortAbImageFrameData, 0, shortAbImageFrameData.Length);
+                    }
+
+                    shortAbImageMediaTexture.LoadRawTextureData(shortAbImageFrameData);
+                    shortAbImageMediaTexture.Apply();
+                }
             }
+
+            //SaveAHATSensorDataEvent(); // send data
         }
-        // update short-throw AbImage texture
-        if (startRealtimePreview && researchMode.ShortAbImageTextureUpdated())
-        {
-            byte[] frameTexture = researchMode.GetShortAbImageTextureBuffer();
-            if (frameTexture.Length > 0)
-            {
-                if (shortAbImageFrameData == null)
-                {
-                    shortAbImageFrameData = frameTexture;
-                }
-                else
-                {
-                    System.Buffer.BlockCopy(frameTexture, 0, shortAbImageFrameData, 0, shortAbImageFrameData.Length);
-                }
 
-                shortAbImageMediaTexture.LoadRawTextureData(shortAbImageFrameData);
-                shortAbImageMediaTexture.Apply();
-            }
-
-            SaveAHATSensorDataEvent(); // added
-        }
-        // update long depth map texture
-        //if (researchMode.LongDepthMapTextureUpdated())
-        //{
-        //    byte[] frameTexture = researchMode.GetLongDepthMapTextureBuffer();
-        //    if (frameTexture.Length > 0)
-        //    {
-        //        if (longDepthFrameData == null)
-        //        {
-        //            longDepthFrameData = frameTexture;
-        //        }
-        //        else
-        //        {
-        //            System.Buffer.BlockCopy(frameTexture, 0, longDepthFrameData, 0, longDepthFrameData.Length);
-        //        }
-
-        //        longDepthMediaTexture.LoadRawTextureData(longDepthFrameData);
-        //        longDepthMediaTexture.Apply();
-        //    }
-        //}
 
         // update LF camera texture
         if (startRealtimePreview && researchMode.LFImageUpdated())
@@ -233,7 +222,7 @@ public class ResearchModeVideoStream : MonoBehaviour
     }
 
 
-    #region Button Event Functions
+#region Button Event Functions
     public void TogglePreviewEvent()
     {
         startRealtimePreview = !startRealtimePreview;
@@ -268,11 +257,11 @@ public class ResearchModeVideoStream : MonoBehaviour
         var AbImage = researchMode.GetShortAbImageBuffer();
         var depthTime = researchMode.GetTimestampTest();
 #if WINDOWS_UWP
-        tcpClient.SendUINT16Async(depthMap, AbImage, depthTime);
+        tcpClient.SendDepthAsync(depthMap, AbImage, depthTime);
 #endif
 #endif
     }
-    #endregion
+#endregion
     private void OnApplicationFocus(bool focus)
     {
         if (!focus) StopSensorsEvent();

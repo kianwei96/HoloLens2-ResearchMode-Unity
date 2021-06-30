@@ -33,6 +33,7 @@ namespace HL2UnityPlugin
         UINT64 GetTimestampTest();
         UINT64 GetAccelTimestamp();
 
+        Boolean DepthMapDataUpdated();
         Boolean DepthMapTextureUpdated();
         Boolean ShortAbImageTextureUpdated();
         Boolean PointCloudUpdated();

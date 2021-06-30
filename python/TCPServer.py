@@ -80,10 +80,11 @@ def tcp_server():
                 #timestamp = str(int(time.time()))
                 timestamp = int.from_bytes(data[5+2*N:5+8+2*N], byteorder='big')
                 ts.append(timestamp)   
-                cv2.imwrite(save_folder + str(timestamp) + str(frames_received) + '_depth.tiff', depth_img_np)
-                cv2.imwrite(save_folder + str(timestamp) + str(frames_received) + '_abImage.tiff', ab_img_np)
+                cv2.imwrite(save_folder + str(timestamp) + str(frames_received) + '_depth.pgm', depth_img_np)
+                cv2.imwrite(save_folder + str(timestamp) + str(frames_received) + '_abImage.pgm', ab_img_np)
                 #print('Image with ts ' + timestamp + ' is saved')
                 frames_received += 1
+                print(frames_received)
                 
         except Exception as e:
             print(e)

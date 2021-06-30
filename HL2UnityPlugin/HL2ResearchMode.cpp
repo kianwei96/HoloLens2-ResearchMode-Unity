@@ -408,6 +408,7 @@ namespace winrt::HL2UnityPlugin::implementation
                     }
                     memcpy(pHL2ResearchMode->m_shortAbImageTexture, pAbTexture.get(), outBufferCount * sizeof(UINT8));
                 }
+                pHL2ResearchMode->m_depthDataUpdated = true;
                 pHL2ResearchMode->m_shortAbImageTextureUpdated = true;
                 pHL2ResearchMode->m_depthMapTextureUpdated = true;
                 pHL2ResearchMode->m_pointCloudUpdated = true;
@@ -686,6 +687,10 @@ namespace winrt::HL2UnityPlugin::implementation
 
     inline int HL2ResearchMode::GetDepthBufferSize() { return m_depthBufferSize; }
 
+    inline bool HL2ResearchMode::DepthMapDataUpdated() {
+        return m_depthDataUpdated;
+    }
+
     inline bool HL2ResearchMode::DepthMapTextureUpdated() { return m_depthMapTextureUpdated; }
 
     inline bool HL2ResearchMode::ShortAbImageTextureUpdated() { return m_shortAbImageTextureUpdated; }
@@ -830,6 +835,7 @@ namespace winrt::HL2UnityPlugin::implementation
         }
         com_array<UINT16> tempBuffer = com_array<UINT16>(m_depthMap, m_depthMap + m_depthBufferSize);
         
+        m_depthDataUpdated = false;
         return tempBuffer;
     }
 

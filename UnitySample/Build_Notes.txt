@@ -109,10 +109,28 @@ Build16:
 Build17:
 # build16, but
 # RMVS.cs now sends depthTime = rm.GTT()
-# tcpClient.SEdnUINT16Async() modified for 3 arguments (naming is so bad.., probably can rewrite - they use definitions for both 1 and 2)
+# tcpClient.SendUINT16Async() modified for 3 arguments (naming is so bad.., probably can rewrite - they use definitions for both 1 and 2)
 # modified python side to read and use hostticks as file name
 (works)
 
+Build19:
+# build17, but
+# SaveAHATSensorDataEvent() now independent of visualization
+# but texture data still requested (to change flag)
+# so overhead might not be completely removed
+# SendUINT16Async (or something) renamed to SendDepthAsync (.cs)
+# see if improve frame rate from 16.
+(no difference, either because of the render call, or because in lateupdate(render) loop)
+
+Build20:
+# build19, but
+# .cpp/.h modified to have m_depthDataUpdated flag
+# flag set to true in sensor loop
+# flag set to false in GetDepthMapBuffer() call - triggered through unity-send call
+# .cpp/.h/idl utility function DepthMapDataUpdated added
+# .cs code, extracted the SaveAHATSensorDataEvent() into a separate FixedUpdate loop
+# fixedupdate at default 0.02s intervals
+(now fully independent, but acquisition rate mostly depends on hand - can get 22Hz with hand in view)
 
 To Do:
 refactor code to allow saving and rendering to be independent
@@ -127,6 +145,8 @@ access rgb data, maybe new buffer visualization?
 send over rgb data, imgshow in python
 send over rgb ticks, use as file names
 
+OnApplicationFocus toggling in RMVS.cs for monitoring?
+
 self ip: 192.168.137.1
 
 
@@ -136,4 +156,5 @@ self ip: 192.168.137.1
 60 seconds - 957 depth frames
 16 fps
 
+926 render on
 
