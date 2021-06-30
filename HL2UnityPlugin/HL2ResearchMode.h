@@ -15,6 +15,13 @@
 #include<winrt/Windows.Perception.Spatial.h>
 #include<winrt/Windows.Perception.Spatial.Preview.h>
 
+#include <cassert>
+#include <chrono>
+#include <cstdint>
+#include <wrl.h>
+
+typedef std::chrono::duration<int64_t, std::ratio<1, 10'000'000>> HundredsOfNanoseconds;
+
 namespace winrt::HL2UnityPlugin::implementation
 {
     struct HL2ResearchMode : HL2ResearchModeT<HL2ResearchMode>
@@ -34,6 +41,8 @@ namespace winrt::HL2UnityPlugin::implementation
 		hstring PrintLFExtrinsics();
 		hstring PrintRFResolution();
 		hstring PrintRFExtrinsics();
+        UINT64 GetTimestampTest(); //added hstring
+        UINT64 GetAccelTimestamp(); //added
 
         void InitializeDepthSensor();
         void InitializeLongDepthSensor();
@@ -76,12 +85,14 @@ namespace winrt::HL2UnityPlugin::implementation
         UINT16* m_depthMap = nullptr;
         UINT8* m_depthMapTexture = nullptr;
         UINT16* m_shortAbImage = nullptr;
+        
         UINT8* m_shortAbImageTexture = nullptr;
         UINT16* m_longDepthMap = nullptr;
         UINT8* m_longDepthMapTexture = nullptr;
 		UINT8* m_LFImage = nullptr;
 		UINT8* m_RFImage = nullptr;
 
+        //TimeConverter m_converter; // added
         IResearchModeSensor* m_pAccelSensor = nullptr; //added
         float m_accelValues[3]{ 0,0,0 }; //added
 
@@ -108,6 +119,8 @@ namespace winrt::HL2UnityPlugin::implementation
         std::atomic_int m_longDepthBufferSize = 0;
         std::atomic_int m_LFbufferSize = 0;
         std::atomic_int m_RFbufferSize = 0;
+        std::atomic_uint64_t m_timeStamp = 0; // added
+        std::atomic_uint64_t m_accelTime = 0; // added
         std::atomic_uint16_t m_centerDepth = 0;
         float m_centerPoint[3]{ 0,0,0 };
         float m_depthSensorPosition[3]{ 0,0,0 };

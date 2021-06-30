@@ -28,7 +28,7 @@ public class TCPClient : MonoBehaviour
 
     [SerializeField]
     string hostIPAddress, port;
-
+    
 #if WINDOWS_UWP
     StreamSocket socket = null;
     public DataWriter dw;
@@ -99,7 +99,7 @@ public class TCPClient : MonoBehaviour
         lastMessageSent = true;
     }
 
-    public async void SendUINT16Async(ushort[] data1, ushort[] data2)
+    public async void SendUINT16Async(ushort[] data1, ushort[] data2, ulong data3)
     {
         if (!lastMessageSent) return;
         lastMessageSent = false;
@@ -114,6 +114,7 @@ public class TCPClient : MonoBehaviour
             // Write actual data
             dw.WriteBytes(UINT16ToBytes(data1));
             dw.WriteBytes(UINT16ToBytes(data2));
+            dw.WriteUInt64(data3);
 
             // Send out
             await dw.StoreAsync();
@@ -136,5 +137,6 @@ public class TCPClient : MonoBehaviour
         System.Buffer.BlockCopy(data, 0, ushortInBytes, 0, ushortInBytes.Length);
         return ushortInBytes;
     }
-#endregion
+
+    #endregion
 }

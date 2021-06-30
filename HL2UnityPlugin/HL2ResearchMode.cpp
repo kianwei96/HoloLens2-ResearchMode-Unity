@@ -179,6 +179,7 @@ namespace winrt::HL2UnityPlugin::implementation
                     pHL2ResearchMode->m_accelValues[2] = BufferOutLength;
                     pHL2ResearchMode->m_accelValues[1] = pAccelBuffer[0].AccelValues[1];
                     pHL2ResearchMode->m_accelValues[0] = pAccelBuffer[0].temperature;
+                    pHL2ResearchMode->m_accelTime = pAccelBuffer[0].SocTicks;
                     pAccelFrame->Release();
 
                     // original if SUCCEEDED(hr) here:
@@ -388,9 +389,15 @@ namespace winrt::HL2UnityPlugin::implementation
                     // save raw AbImage
                     if (!pHL2ResearchMode->m_shortAbImage)
                     {
+                        // also save timestamp
+                        //pHL2ResearchMode->m_timeStamp = timestamp.HostTicks;
+
                         OutputDebugString(L"Create Space for short AbImage...\n");
                         pHL2ResearchMode->m_shortAbImage = new UINT16[outBufferCount];
                     }
+                    UINT64 temp_time;
+                    temp_time = timestamp.HostTicks;
+                    pHL2ResearchMode->m_timeStamp = temp_time; // shifted out
                     memcpy(pHL2ResearchMode->m_shortAbImage, pAbImage, outBufferCount * sizeof(UINT16));
 
                     // save pre-processed AbImage texture (for visualization)
@@ -692,6 +699,18 @@ namespace winrt::HL2UnityPlugin::implementation
 	inline bool HL2ResearchMode::LFImageUpdated() { return m_LFImageUpdated; }
 
 	inline bool HL2ResearchMode::RFImageUpdated() { return m_RFImageUpdated; }
+
+    inline UINT64 HL2ResearchMode::GetTimestampTest()
+    {
+        return m_timeStamp;
+        //return winrt::to_hstring(m_timeStamp);
+        //return winrt::to_hstring(m_converter.RelativeTicksToAbsoluteTicks(HundredsOfNanoseconds((long long)m_timeStamp)).count());
+    }
+
+    inline UINT64 HL2ResearchMode::GetAccelTimestamp()
+    {
+        return m_accelTime;
+    }
 
     hstring HL2ResearchMode::PrintResolution()
     {

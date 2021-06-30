@@ -7,15 +7,6 @@ import cv2
 import time
 import threading
 
-def recvall(size):
-    msg = bytes()
-    while len(msg) < size:
-        part = self.socket.recv(size - len(msg))
-        if part == '':
-            break  # the connection is closed
-        msg += part
-    return msg
-
 def tcp_server():
     serverHost = '' # localhost
     serverPort = 1234
@@ -52,12 +43,19 @@ def tcp_server():
 
     print('Connected with ' + addr[0] + ':' + str(addr[1]))
 
+    experiment_timer = time.time()
+    ts = []
     frames_received = 0
     while True:
         # Receiving from client
+        
+        if time.time() - experiment_timer > 10:
+            print("experiment over")
+            break        
+        
         try:
             
-            msg_size = 512*512*4+5
+            msg_size = (512*512*4)+5+8
             data = bytes()
             while len(data) < msg_size:
                 part = conn.recv(msg_size - len(data))
@@ -71,26 +69,33 @@ def tcp_server():
             #print("data packet received: ", len(data))
             header = data[0:1].decode('utf-8')
             #print('--------------------------\nHeader: ' + header)
-
+            
+        
             if header == 's':
                 # get the init transform
                 data_length = struct.unpack(">i", data[1:5])[0]
                 N = data_length
                 depth_img_np = np.frombuffer(data[5:5+N], np.uint16).reshape((512,512))
                 ab_img_np = np.frombuffer(data[5+N:5+2*N], np.uint16).reshape((512,512))
-                timestamp = str(int(time.time()))
-                cv2.imwrite(save_folder + timestamp+'_depth.tiff', depth_img_np)
-                cv2.imwrite(save_folder + timestamp+'_abImage.tiff', ab_img_np)
-                print('Image with ts ' + timestamp + ' is saved')
+                #timestamp = str(int(time.time()))
+                timestamp = int.from_bytes(data[5+2*N:5+8+2*N], byteorder='big')
+                ts.append(data)
+                if frames_received < 10:
+                    print(timestamp)
+                
+                cv2.imwrite(save_folder + str(timestamp) + str(frames_received) + '_depth.tiff', depth_img_np)
+                cv2.imwrite(save_folder + str(timestamp) + str(frames_received) + '_abImage.tiff', ab_img_np)
+                #print('Image with ts ' + timestamp + ' is saved')
                 frames_received += 1
-                print(frames_received)
                 
         except Exception as e:
             print(e)
             break
     
+    print("frames received: ", frames_received)
     print('Closing socket...')
     sSock.close()
+    print('Exiting')
 
 
 if __name__ == "__main__":

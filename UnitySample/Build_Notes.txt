@@ -73,20 +73,59 @@ Build11:
 # in unity researchmodecontroller, changed ip to 137.1, port 1234
 # in tcpserver.py, changed port to 1234
 # in tcpserver.py, replaced recv with "recvall", reduced offset to +5 from +100 - 1 for "s", 4 for int32.
-(IR images coming in fast, but not all are saved)
+(IR images coming in fast, but not all are saved - issue was with filenaming/overriding)
 
-Build11b:
-# no change to build11 on the hololens side.
-# tcpserver.py multithreaded as per https://www.programmersought.com/article/24067427272/
+Build12:
+# build11, but
+# added to hl2rm.cpp -> new method GetTimestampTest(), new m_timeStamp.
+# updated .idl and .h to support
+# changed rmvs.cs to print as latest depth timestamp as z instead of temp batch size
+(no error, but the display shows 19200000 as a static value)
 
+Build13:
+# build12, but
+# hl2rm.cpp - use timestamp.HostTicks instead of timestamp.HostTicksPerSecond
+(getting 10 digit value that changes every startup, but doesn't change dynamically)
+
+Build14:
+# build13, but
+# shifted update of m_timeStamp to outside if statement (HL2RM.cpp)
+# reset string in unity, for debugging (RMVS.cs)
+(timestamps roll but still 10 digits only, seems like in 100 nanoseconds units x100/10^9)
+
+Build15
+# build14, but 
+# m_timeStamp from hstring to std::atomic_uint64_t;
+# GetTimestampTest now returns m_timeStamp straight away as uint64
+(timestamps still 10 digits, but checked, can roll to 11)
+
+Build16:
+# build15, but
+# added new GetAccelTimestamp() and m_accelTime for HL2RM.cpp/.h/.idl
+# method gives UINT16 timestamp for accelerometer
+# unity rmvs.cs changed to temperature/temptime/depthtime
+(timings are in sync, good)
+
+Build17:
+# build16, but
+# RMVS.cs now sends depthTime = rm.GTT()
+# tcpClient.SEdnUINT16Async() modified for 3 arguments (naming is so bad.., probably can rewrite - they use definitions for both 1 and 2)
+# modified python side to read and use hostticks as file name
+(works)
 
 
 To Do:
-try threading for image writing https://www.programmersought.com/article/24067427272/
-access camera extrinsics, intrinsics, print in app
-access timestamps, print in app
-send over timestamps as well, save as file name
-send over extrinsics as well, separate files
-send over intrinsics/r2w once
+
+send over depth ticks, use as file names - 30/6
+send over temp and temp ticks, print in python, save in txt
+
+access camera extrinsics, (intrinsics), print in app
+send over extrinsics as well, save in txt
+(send over intrinsics/r2w once)
+
+access rgb ticks, print in app
+access rgb data, maybe new buffer visualization?
+send over rgb data, imgshow in python
+send over rgb ticks, use as file names
 
 self ip: 192.168.137.1

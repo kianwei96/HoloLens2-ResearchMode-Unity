@@ -105,7 +105,11 @@ public class ResearchModeVideoStream : MonoBehaviour
 #if ENABLE_WINMD_SUPPORT
 
         // update accel reading
-        string aString = "X: " + researchMode.GetAccelValues()[0].ToString("F1") + "\nY: " + researchMode.GetAccelValues()[1].ToString("F1") + "\nZ: " + researchMode.GetAccelValues()[2].ToString("F1");
+        string depthTiming = researchMode.GetTimestampTest().ToString();
+        string accelTiming = researchMode.GetAccelTimestamp().ToString();
+        string aString = "Temp: " + researchMode.GetAccelValues()[0].ToString("F1") + "\nA-Time: " + accelTiming + "\nD-Time: " + depthTiming;
+        depthTiming = "reset value";
+        accelTiming = "reset value";
         TempText.text = aString;
     
         // update depth map texture
@@ -262,8 +266,9 @@ public class ResearchModeVideoStream : MonoBehaviour
 #if ENABLE_WINMD_SUPPORT
         var depthMap = researchMode.GetDepthMapBuffer();
         var AbImage = researchMode.GetShortAbImageBuffer();
+        var depthTime = researchMode.GetTimestampTest();
 #if WINDOWS_UWP
-        tcpClient.SendUINT16Async(depthMap, AbImage);
+        tcpClient.SendUINT16Async(depthMap, AbImage, depthTime);
 #endif
 #endif
     }

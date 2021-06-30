@@ -30,6 +30,8 @@ namespace HL2UnityPlugin
 		String PrintLFExtrinsics();
 		String PrintRFResolution();
 		String PrintRFExtrinsics();
+        UINT64 GetTimestampTest();
+        UINT64 GetAccelTimestamp();
 
         Boolean DepthMapTextureUpdated();
         Boolean ShortAbImageTextureUpdated();
