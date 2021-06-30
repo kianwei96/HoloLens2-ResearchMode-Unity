@@ -105,6 +105,7 @@ public class ResearchModeVideoStream : MonoBehaviour
         if (researchMode.DepthMapDataUpdated())
         {
             SaveAHATSensorDataEvent(); // send data
+            SaveTempDataEvent();
         }
 #endif
     }
@@ -261,7 +262,20 @@ public class ResearchModeVideoStream : MonoBehaviour
 #endif
 #endif
     }
-#endregion
+
+    public void SaveTempDataEvent()
+    {
+#if ENABLE_WINMD_SUPPORT
+        var temperatureValue = 100 * researchMode.GetAccelValues()[0];
+        int tempValInt = (int)temperatureValue;
+        var temperatureTiming = researchMode.GetAccelTimestamp();
+#if WINDOWS_UWP
+        tcpClient.SendTempAsync(tempValInt, temperatureTiming);
+#endif
+#endif
+    }
+
+    #endregion
     private void OnApplicationFocus(bool focus)
     {
         if (!focus) StopSensorsEvent();

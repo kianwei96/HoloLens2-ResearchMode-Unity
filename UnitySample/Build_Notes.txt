@@ -132,9 +132,21 @@ Build20:
 # fixedupdate at default 0.02s intervals
 (now fully independent, but acquisition rate mostly depends on hand - can get 22Hz with hand in view)
 
+Build21:
+# build20, but
+# changed depth packet header from "s" to "d", also on python side
+# on python side, changed target packet to be dynamic, based on header
+# on python side, attempts to write to csv
+# temp packet 1+4+8 ("t", int val, ulong time)
+# SendTempAsync in TCPClient.cs implemented
+# SaveTempDataEvent in RMVS.cs implemented, and used in FixedUpdate
+(timing and temperature do go across and get saved)
+(frames received still ~ 22hz, but temp is ~ 7hz)
+
+
 To Do:
-refactor code to allow saving and rendering to be independent
-send over temp and temp ticks, print in python, save in txt
+temp piggy backs on depth refreshing, open another m_ and checker?
+coonection
 
 access camera extrinsics, (intrinsics), print in app
 send over extrinsics as well, save in txt

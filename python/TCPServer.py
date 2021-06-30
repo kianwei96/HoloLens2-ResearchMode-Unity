@@ -6,6 +6,7 @@ import numpy as np
 import cv2
 import time
 import threading
+import csv
 
 def tcp_server():
     serverHost = '' # localhost
@@ -15,6 +16,12 @@ def tcp_server():
     if ~os.path.isdir(save_folder):
         try:
             os.mkdir(save_folder)
+        except:
+            pass
+        
+    if ~os.path.isdir(save_folder + "depth/"):
+        try:
+            os.mkdir(save_folder + "depth/")
         except:
             pass
 
@@ -46,6 +53,7 @@ def tcp_server():
     experiment_timer = time.time()
     ts = []
     frames_received = 0
+    temp_received = 0
     while True:
         # Receiving from client
         
@@ -55,13 +63,23 @@ def tcp_server():
         
         try:
             
-            msg_size = (512*512*4)+5+8
+            msg_size_d = (512*512*4)+5+8
+            msg_size_t = 1+4+8
+            correct_size = np.min([msg_size_d, msg_size_t])
+            determined = False
             data = bytes()
-            while len(data) < msg_size:
-                part = conn.recv(msg_size - len(data))
+            while len(data) < correct_size:
+                part = conn.recv(correct_size - len(data))
                 if part == '':
                     break
                 data += part
+                if not determined:
+                    header = data[0:1].decode('utf-8')
+                    if header == "d":
+                        correct_size = msg_size_d
+                    elif header == "t":
+                        correct_size = msg_size_t
+                    determined = True
             
             #data = conn.recv(#512*512*4+100) #+100/+5
             if len(data)==0:
@@ -71,7 +89,7 @@ def tcp_server():
             #print('--------------------------\nHeader: ' + header)
             
         
-            if header == 's':
+            if header == 'd':
                 # get the init transform
                 data_length = struct.unpack(">i", data[1:5])[0]
                 N = data_length
@@ -80,17 +98,27 @@ def tcp_server():
                 #timestamp = str(int(time.time()))
                 timestamp = int.from_bytes(data[5+2*N:5+8+2*N], byteorder='big')
                 ts.append(timestamp)   
-                cv2.imwrite(save_folder + str(timestamp) + str(frames_received) + '_depth.pgm', depth_img_np)
-                cv2.imwrite(save_folder + str(timestamp) + str(frames_received) + '_abImage.pgm', ab_img_np)
+                cv2.imwrite(save_folder + "depth/" + str(timestamp) + str(frames_received) + '_depth.pgm', depth_img_np)
+                cv2.imwrite(save_folder + "depth/" + str(timestamp) + str(frames_received) + '_abImage.pgm', ab_img_np)
                 #print('Image with ts ' + timestamp + ' is saved')
                 frames_received += 1
                 print(frames_received)
+                
+            if header == 't':
+                temperature = int.from_bytes(data[1:1+4], byteorder='big')
+                timestamp = int.from_bytes(data[1+4:1+4+8], byteorder='big')
+                with open(save_folder + 'temperature.csv','a',newline='') as myfile:
+                    wrtr = csv.writer(myfile, delimiter=',')
+                    wrtr.writerow([timestamp, temperature])
+                    myfile.flush()
+                temp_received += 1
                 
         except Exception as e:
             print(e)
             break
     
     print("frames received: ", frames_received)
+    print("temperature values received: ", temp_received)
     print('Closing socket...')
     sSock.close()
     print('Exiting')

@@ -28,7 +28,7 @@ public class TCPClient : MonoBehaviour
 
     [SerializeField]
     string hostIPAddress, port;
-    
+
 #if WINDOWS_UWP
     StreamSocket socket = null;
     public DataWriter dw;
@@ -106,7 +106,7 @@ public class TCPClient : MonoBehaviour
         try
         {
             // Write header
-            dw.WriteString("s"); // header "s" stands for it is ushort array (uint16)
+            dw.WriteString("d"); // header "d" stands for depth packet
 
             // Write Length
             dw.WriteInt32(data1.Length + data2.Length);
@@ -115,6 +115,31 @@ public class TCPClient : MonoBehaviour
             dw.WriteBytes(UINT16ToBytes(data1));
             dw.WriteBytes(UINT16ToBytes(data2));
             dw.WriteUInt64(data3);
+
+            // Send out
+            await dw.StoreAsync();
+            await dw.FlushAsync();
+        }
+        catch (Exception ex)
+        {
+            SocketErrorStatus webErrorStatus = SocketError.GetStatus(ex.GetBaseException().HResult);
+            Debug.Log(webErrorStatus.ToString() != "Unknown" ? webErrorStatus.ToString() : ex.Message);
+        }
+        lastMessageSent = true;
+    }
+
+    public async void SendTempAsync(int tempVal, ulong tempTime)
+    {
+        if (!lastMessageSent) return;
+        lastMessageSent = false;
+        try
+        {
+            // Write header
+            dw.WriteString("t"); // header "t" stands for temperature packet
+
+            // Write actual data
+            dw.WriteInt32(tempVal);
+            dw.WriteUInt64(tempTime);
 
             // Send out
             await dw.StoreAsync();
