@@ -141,32 +141,69 @@ Build21:
 # SendTempAsync in TCPClient.cs implemented
 # SaveTempDataEvent in RMVS.cs implemented, and used in FixedUpdate
 (timing and temperature do go across and get saved)
-(frames received still ~ 22hz, but temp is ~ 7hz)
+(depth frames received still 22hz, but temp is 7hz)
+
+Build22:
+# build21, but
+# .cpp/.h modified to have m_tempDataUpdated flag
+# flag set to true in sensor loop
+# flag set to false in GetAccelValues() call - triggered through unity-send call
+# .cpp/.h/idl utility function TempDataUpdated added
+# .cs fixedupdated, split temperature and ahat calls
+(both go across, depth <withhands> still 22hz, temp is even lower at 3.8hz)
+(makes sense in hindsight, because it's refresh rate is now tied to it's own flag, instead of riding off depth's)
+
+Build23:
+# build22, but
+# disable depth load/saving
+# disable temp showing
+# to check if it's a bottleneck issue for imu
+(temp now 11hz)
+
+Build24:
+# build23, but
+# show temp
+# to check if multiple calls to temperature affects
+(worsening expected, because showing involves setting flag to false, oops)
+(temp now 8hz)
+
+Build25:
+# build24, but
+# flag setting now pushed to timestamp-getting function, so that render wont set to false
+# depth load/saving reenabled
+(temp now 6.2hz)
+
+Build26:
+# build25, but
+# depth saving disabled
+# to test network throttle
+(temp now 11.8hz)
+
+Build27:
+# build26, but
+# depth saving reenabled
+# depth saving reworked to also load the most recent temperature and send over (with temp-time)
+# new aggregator in rmvs.cs - saveahatsensortempdataevent()
+# new sender in tcpclient.cs - senddepthtempasync()
+# python side added new flag "c"
+(depth 22hz, unique temp values now 11.8hz)
+(temp data now stores - timestamp of depth piggy, timestamp of temp, temp)
+
 
 
 To Do:
-temp piggy backs on depth refreshing, open another m_ and checker?
+OnApplicationFocus toggling in RMVS.cs for monitoring?
+revive longthrow
+
 coonection
 
 access camera extrinsics, (intrinsics), print in app
 send over extrinsics as well, save in txt
 (send over intrinsics/r2w once)
-
 access rgb ticks, print in app
 access rgb data, maybe new buffer visualization?
 send over rgb data, imgshow in python
 send over rgb ticks, use as file names
 
-OnApplicationFocus toggling in RMVS.cs for monitoring?
-
 self ip: 192.168.137.1
-
-
-60 seconds - 980 depth frames
-60 seconds - 1156 depth frames
-60 seconds - 741 depth frames
-60 seconds - 957 depth frames
-16 fps
-
-926 render on
 

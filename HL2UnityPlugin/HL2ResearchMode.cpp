@@ -180,22 +180,11 @@ namespace winrt::HL2UnityPlugin::implementation
                     pHL2ResearchMode->m_accelValues[1] = pAccelBuffer[0].AccelValues[1];
                     pHL2ResearchMode->m_accelValues[0] = pAccelBuffer[0].temperature;
                     pHL2ResearchMode->m_accelTime = pAccelBuffer[0].SocTicks;
+
+                    pHL2ResearchMode->m_tempDataUpdated = true;
+
                     pAccelFrame->Release();
 
-                    // original if SUCCEEDED(hr) here:
-
-                    //DirectX::XMFLOAT3 m_accelSample;
-                    //hr = pAccelFrame->GetCalibratedAccelaration(&m_accelSample);
-                    //if (FAILED(hr))
-                    //{
-                    //    return;
-                    //}
-
-                    //pHL2ResearchMode->m_accelValues[0] = m_accelSample.x;
-                    //pHL2ResearchMode->m_accelValues[1] = m_accelSample.y;
-                    //pHL2ResearchMode->m_accelValues[2] = m_accelSample.z;
-
-                    //pAccelFrame->Release();
                 }
             }
         }
@@ -691,6 +680,10 @@ namespace winrt::HL2UnityPlugin::implementation
         return m_depthDataUpdated;
     }
 
+    inline bool HL2ResearchMode::TempDataUpdated() {
+        return m_tempDataUpdated;
+    }
+
     inline bool HL2ResearchMode::DepthMapTextureUpdated() { return m_depthMapTextureUpdated; }
 
     inline bool HL2ResearchMode::ShortAbImageTextureUpdated() { return m_shortAbImageTextureUpdated; }
@@ -714,6 +707,7 @@ namespace winrt::HL2UnityPlugin::implementation
 
     inline UINT64 HL2ResearchMode::GetAccelTimestamp()
     {
+        m_tempDataUpdated = false;
         return m_accelTime;
     }
 

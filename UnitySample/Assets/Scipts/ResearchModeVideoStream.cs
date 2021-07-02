@@ -104,9 +104,13 @@ public class ResearchModeVideoStream : MonoBehaviour
 #if ENABLE_WINMD_SUPPORT
         if (researchMode.DepthMapDataUpdated())
         {
-            SaveAHATSensorDataEvent(); // send data
-            SaveTempDataEvent();
+            //SaveAHATSensorDataEvent(); // send data
+            SaveAHATSensorTempDataEvent(); // send data with temperature piggybacked
         }
+        //if (researchMode.TempDataUpdated())
+        //{
+        //    SaveTempDataEvent();
+        //}
 #endif
     }
 
@@ -119,6 +123,9 @@ public class ResearchModeVideoStream : MonoBehaviour
         // string accelTiming = researchMode.GetAccelTimestamp().ToString();
         string aString = "Temp: " + researchMode.GetAccelValues()[0].ToString("F1");
         TempText.text = aString;
+
+        //string aString = "abc";
+        //TempText.text = aString;
 
         if (researchMode.DepthMapTextureUpdated()) // if new data
         {
@@ -271,6 +278,21 @@ public class ResearchModeVideoStream : MonoBehaviour
         var temperatureTiming = researchMode.GetAccelTimestamp();
 #if WINDOWS_UWP
         tcpClient.SendTempAsync(tempValInt, temperatureTiming);
+#endif
+#endif
+    }
+
+    public void SaveAHATSensorTempDataEvent()
+    {
+#if ENABLE_WINMD_SUPPORT
+        var depthMap = researchMode.GetDepthMapBuffer();
+        var AbImage = researchMode.GetShortAbImageBuffer();
+        var depthTime = researchMode.GetTimestampTest();
+        var temperatureValue = 100 * researchMode.GetAccelValues()[0];
+        int tempValInt = (int)temperatureValue;
+        var temperatureTiming = researchMode.GetAccelTimestamp();
+#if WINDOWS_UWP
+        tcpClient.SendDepthTempAsync(depthMap, AbImage, depthTime, tempValInt, temperatureTiming);
 #endif
 #endif
     }

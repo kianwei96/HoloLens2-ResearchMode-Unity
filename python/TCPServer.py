@@ -65,6 +65,7 @@ def tcp_server():
             
             msg_size_d = (512*512*4)+5+8
             msg_size_t = 1+4+8
+            msg_size_c = (512*512*4)+5+8+4+8
             correct_size = np.min([msg_size_d, msg_size_t])
             determined = False
             data = bytes()
@@ -79,6 +80,8 @@ def tcp_server():
                         correct_size = msg_size_d
                     elif header == "t":
                         correct_size = msg_size_t
+                    elif header == "c":
+                        correct_size = msg_size_c
                     determined = True
             
             #data = conn.recv(#512*512*4+100) #+100/+5
@@ -89,7 +92,7 @@ def tcp_server():
             #print('--------------------------\nHeader: ' + header)
             
         
-            if header == 'd':
+            if header == 'd': # depth
                 # get the init transform
                 data_length = struct.unpack(">i", data[1:5])[0]
                 N = data_length
@@ -97,14 +100,14 @@ def tcp_server():
                 ab_img_np = np.frombuffer(data[5+N:5+2*N], np.uint16).reshape((512,512))
                 #timestamp = str(int(time.time()))
                 timestamp = int.from_bytes(data[5+2*N:5+8+2*N], byteorder='big')
-                ts.append(timestamp)   
+                #ts.append(timestamp)   
                 cv2.imwrite(save_folder + "depth/" + str(timestamp) + str(frames_received) + '_depth.pgm', depth_img_np)
                 cv2.imwrite(save_folder + "depth/" + str(timestamp) + str(frames_received) + '_abImage.pgm', ab_img_np)
                 #print('Image with ts ' + timestamp + ' is saved')
                 frames_received += 1
-                print(frames_received)
+                #print(frames_received)
                 
-            if header == 't':
+            if header == 't': # temperature
                 temperature = int.from_bytes(data[1:1+4], byteorder='big')
                 timestamp = int.from_bytes(data[1+4:1+4+8], byteorder='big')
                 with open(save_folder + 'temperature.csv','a',newline='') as myfile:
@@ -112,6 +115,27 @@ def tcp_server():
                     wrtr.writerow([timestamp, temperature])
                     myfile.flush()
                 temp_received += 1
+                
+            if header == 'c': # depth and temperature
+                data_length = struct.unpack(">i", data[1:5])[0]
+                N = data_length
+                depth_img_np = np.frombuffer(data[5:5+N], np.uint16).reshape((512,512))
+                ab_img_np = np.frombuffer(data[5+N:5+2*N], np.uint16).reshape((512,512))
+                #timestamp = str(int(time.time()))
+                timestamp = int.from_bytes(data[5+2*N:5+8+2*N], byteorder='big')
+                  
+                cv2.imwrite(save_folder + "depth/" + str(timestamp) + str(frames_received) + '_depth.pgm', depth_img_np)
+                cv2.imwrite(save_folder + "depth/" + str(timestamp) + str(frames_received) + '_abImage.pgm', ab_img_np)                
+                
+                temperature = int.from_bytes(data[5+8+2*N:5+8+2*N+4], byteorder='big')
+                timestamptemp = int.from_bytes(data[5+8+2*N+4:5+8+2*N+4+8], byteorder='big')
+                ts.append(timestamptemp) 
+                with open(save_folder + 'temperature.csv','a',newline='') as myfile:
+                    wrtr = csv.writer(myfile, delimiter=',')
+                    wrtr.writerow([timestamp, timestamptemp, temperature])
+                    myfile.flush()                
+                frames_received += 1
+                
                 
         except Exception as e:
             print(e)

@@ -153,6 +153,41 @@ public class TCPClient : MonoBehaviour
         lastMessageSent = true;
     }
 
+    public async void SendDepthTempAsync(ushort[] data1, ushort[] data2, ulong data3, int tempVal, ulong tempTime)
+    {
+        // depth, ab, dt, temp, tt
+
+        if (!lastMessageSent) return;
+        lastMessageSent = false;
+        try
+        {
+            // Write header
+            dw.WriteString("c"); // header "c" stands for combined-depth-temperature packet
+
+            // Write Length
+            dw.WriteInt32(data1.Length + data2.Length);
+
+            // Write actual data
+            dw.WriteBytes(UINT16ToBytes(data1));
+            dw.WriteBytes(UINT16ToBytes(data2));
+            dw.WriteUInt64(data3);
+
+            dw.WriteInt32(tempVal);
+            dw.WriteUInt64(tempTime);
+
+            // Send out
+            await dw.StoreAsync();
+            await dw.FlushAsync();
+        }
+        catch (Exception ex)
+        {
+            SocketErrorStatus webErrorStatus = SocketError.GetStatus(ex.GetBaseException().HResult);
+            Debug.Log(webErrorStatus.ToString() != "Unknown" ? webErrorStatus.ToString() : ex.Message);
+        }
+        lastMessageSent = true;
+
+    }
+
 #endif
 
     #region Helper Function
