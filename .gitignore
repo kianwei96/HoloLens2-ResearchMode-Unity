@@ -350,7 +350,7 @@ MigrationBackup/
 .ionide/
 
 # python folder
-python/
+#python/
 data/
 
 # VS Code
