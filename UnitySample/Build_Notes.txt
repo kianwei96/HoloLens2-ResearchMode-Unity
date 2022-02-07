@@ -1,0 +1,209 @@
+Build differences compard to original.
+For every build, modify Plugins to UWP/ARM64
+In manifest, add:
+xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+rescap to ignorable
+<rescap:Capability Name="perceptionSensorsExperimental" />
+<DeviceCapability Name="backgroundSpatialPerception" />
+Build for ARM64 Release
+Deploy via IP Address (now 192.168.137.176, 192.168.137.125)
+
+Build1:
+# DLL modified to access Accel, didn't break the original DLL, not tested to work for Accel
+# Starting off as PointCloud=false, to find out where is the control panel hiding
+(ok)
+
+Build2:
+# DLL modified to access Accel, didn't break the original DLL, not tested to work for Accel
+# tarting off as PointCloud=false, to find out where is the control panel hiding
+# Buttons moved to parent MainCamera instead of MixedRealityPlayspace
+# Buttons Position changed from 0,0,0.6 to 0.05,0,0.6
+# Buttons Scale changed from 1,1,1 to 1.5,1.5,1.5
+# Turned off - SolverHandler, RadialView, FollowMeToggle
+# TempText created and moved to under Buttons.
+(no feed)
+
+Build3:
+# same as build 2, but uncheck/disable TempText.
+(works)
+
+Build4:
+# back to build2, by reenabling TempText.
+(works, but text has double vision)
+
+Build5:
+# build4, but player settings -> XR -> Stereo rendering set to single pass instead of multi
+(still  has some double vision for text)
+
+Build6:
+# build4 (multipass rendering), but shifted text:
+# z from 2.4 to 0.8
+# y from -0.3 to 
+# size from 5 to 1
+(kind of resolved, by making it closer and smaller)
+
+Build7:
+# build6, but
+# RMVS.cs added TempText static change at start of execution.
+# in unity, rmcontroller's script call linked to temptext object
+(works)
+
+Build8:
+# build7, but
+# added rm.StartAccelSensorLoop() to start() in rmvs.cs
+# added text update call to lateupdate() in rmvs.cs
+(fail, startaccelsensorloop(), startstream() no permission)
+
+Build9:
+# build8, but
+# added researchMode.InitializeAllSensors() to start() in rmvs.cs
+(works, string too tall - 3 levels, overlapped by ui)
+
+Build10:
+# build9, but
+# string moved down from -0.1 to -0.18 (y)
+# change acquisition method in plugin as below:
+# to struct, 0,1,2 now shows temperature, actual-y accel and number of samples instead of direct float3.
+# see if it breaks accel floats
+(32.6, -0.5, 8(9)3.0 respectively. temperature(x) climbs steadily. accel(y) corresponds to movement. samples(z) unchanged)
+
+Build11:
+# build10, but
+# changed RMVS.cs to call rm.saveahatsensordataevent()
+# in unity researchmodecontroller, changed ip to 137.1, port 1234
+# in tcpserver.py, changed port to 1234
+# in tcpserver.py, replaced recv with "recvall", reduced offset to +5 from +100 - 1 for "s", 4 for int32.
+(IR images coming in fast, but not all are saved - issue was with filenaming/overriding)
+
+Build12:
+# build11, but
+# added to hl2rm.cpp -> new method GetTimestampTest(), new m_timeStamp.
+# updated .idl and .h to support
+# changed rmvs.cs to print as latest depth timestamp as z instead of temp batch size
+(no error, but the display shows 19200000 as a static value)
+
+Build13:
+# build12, but
+# hl2rm.cpp - use timestamp.HostTicks instead of timestamp.HostTicksPerSecond
+(getting 10 digit value that changes every startup, but doesn't change dynamically)
+
+Build14:
+# build13, but
+# shifted update of m_timeStamp to outside if statement (HL2RM.cpp)
+# reset string in unity, for debugging (RMVS.cs)
+(timestamps roll but still 10 digits only, seems like in 100 nanoseconds units x100/10^9)
+
+Build15
+# build14, but 
+# m_timeStamp from hstring to std::atomic_uint64_t;
+# GetTimestampTest now returns m_timeStamp straight away as uint64
+(timestamps still 10 digits, but checked, can roll to 11)
+
+Build16:
+# build15, but
+# added new GetAccelTimestamp() and m_accelTime for HL2RM.cpp/.h/.idl
+# method gives UINT16 timestamp for accelerometer
+# unity rmvs.cs changed to temperature/temptime/depthtime
+(timings are in sync, good)
+
+Build17:
+# build16, but
+# RMVS.cs now sends depthTime = rm.GTT()
+# tcpClient.SendUINT16Async() modified for 3 arguments (naming is so bad.., probably can rewrite - they use definitions for both 1 and 2)
+# modified python side to read and use hostticks as file name
+(works)
+
+Build19:
+# build17, but
+# SaveAHATSensorDataEvent() now independent of visualization
+# but texture data still requested (to change flag)
+# so overhead might not be completely removed
+# SendUINT16Async (or something) renamed to SendDepthAsync (.cs)
+# see if improve frame rate from 16.
+(no difference, either because of the render call, or because in lateupdate(render) loop)
+
+Build20:
+# build19, but
+# .cpp/.h modified to have m_depthDataUpdated flag
+# flag set to true in sensor loop
+# flag set to false in GetDepthMapBuffer() call - triggered through unity-send call
+# .cpp/.h/idl utility function DepthMapDataUpdated added
+# .cs code, extracted the SaveAHATSensorDataEvent() into a separate FixedUpdate loop
+# fixedupdate at default 0.02s intervals
+(now fully independent, but acquisition rate mostly depends on hand - can get 22Hz with hand in view)
+
+Build21:
+# build20, but
+# changed depth packet header from "s" to "d", also on python side
+# on python side, changed target packet to be dynamic, based on header
+# on python side, attempts to write to csv
+# temp packet 1+4+8 ("t", int val, ulong time)
+# SendTempAsync in TCPClient.cs implemented
+# SaveTempDataEvent in RMVS.cs implemented, and used in FixedUpdate
+(timing and temperature do go across and get saved)
+(depth frames received still 22hz, but temp is 7hz)
+
+Build22:
+# build21, but
+# .cpp/.h modified to have m_tempDataUpdated flag
+# flag set to true in sensor loop
+# flag set to false in GetAccelValues() call - triggered through unity-send call
+# .cpp/.h/idl utility function TempDataUpdated added
+# .cs fixedupdated, split temperature and ahat calls
+(both go across, depth <withhands> still 22hz, temp is even lower at 3.8hz)
+(makes sense in hindsight, because it's refresh rate is now tied to it's own flag, instead of riding off depth's)
+
+Build23:
+# build22, but
+# disable depth load/saving
+# disable temp showing
+# to check if it's a bottleneck issue for imu
+(temp now 11hz)
+
+Build24:
+# build23, but
+# show temp
+# to check if multiple calls to temperature affects
+(worsening expected, because showing involves setting flag to false, oops)
+(temp now 8hz)
+
+Build25:
+# build24, but
+# flag setting now pushed to timestamp-getting function, so that render wont set to false
+# depth load/saving reenabled
+(temp now 6.2hz)
+
+Build26:
+# build25, but
+# depth saving disabled
+# to test network throttle
+(temp now 11.8hz)
+
+Build27:
+# build26, but
+# depth saving reenabled
+# depth saving reworked to also load the most recent temperature and send over (with temp-time)
+# new aggregator in rmvs.cs - saveahatsensortempdataevent()
+# new sender in tcpclient.cs - senddepthtempasync()
+# python side added new flag "c"
+(depth 22hz, unique temp values now 11.8hz)
+(temp data now stores - timestamp of depth piggy, timestamp of temp, temp)
+
+
+
+To Do:
+OnApplicationFocus toggling in RMVS.cs for monitoring?
+revive longthrow
+
+coonection
+
+access camera extrinsics, (intrinsics), print in app
+send over extrinsics as well, save in txt
+(send over intrinsics/r2w once)
+access rgb ticks, print in app
+access rgb data, maybe new buffer visualization?
+send over rgb data, imgshow in python
+send over rgb ticks, use as file names
+
+self ip: 192.168.137.1
+
