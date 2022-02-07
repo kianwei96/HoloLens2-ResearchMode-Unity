@@ -31,6 +31,10 @@ namespace winrt::HL2UnityPlugin::implementation
 		hstring PrintLFExtrinsics();
 		hstring PrintRFResolution();
 		hstring PrintRFExtrinsics();
+        INT64 GetTimestampTest(); //added hstring / was uint64
+        hstring PrintDepthToWorld();
+        hstring PrintLeftToWorld();
+        hstring PrintRightToWorld();
 
         void InitializeDepthSensor();
         void InitializeLongDepthSensor();
@@ -49,6 +53,7 @@ namespace winrt::HL2UnityPlugin::implementation
         void StopAllSensorDevice();
 
         bool DepthMapTextureUpdated();
+        bool DepthMapDataUpdated();
         bool ShortAbImageTextureUpdated();
         bool LongAbImageTextureUpdated();
         bool PointCloudUpdated();
@@ -129,6 +134,7 @@ namespace winrt::HL2UnityPlugin::implementation
         std::atomic_int m_longDepthBufferSize = 0;
         std::atomic_int m_LFbufferSize = 0;
         std::atomic_int m_RFbufferSize = 0;
+        std::atomic_int64_t m_timeStamp = 0; // added / changed to int64
         std::atomic_uint16_t m_centerDepth = 0;
         float m_centerPoint[3]{ 0,0,0 };
 
@@ -141,6 +147,7 @@ namespace winrt::HL2UnityPlugin::implementation
 
         std::atomic_bool m_depthMapTextureUpdated = false;
         std::atomic_bool m_shortAbImageTextureUpdated = false;
+        std::atomic_bool m_depthDataUpdated = false;
         std::atomic_bool m_longAbImageTextureUpdated = false;
         std::atomic_bool m_longDepthMapTextureUpdated = false;
         std::atomic_bool m_pointCloudUpdated = false;
@@ -166,6 +173,9 @@ namespace winrt::HL2UnityPlugin::implementation
         static void CamAccessOnComplete(ResearchModeSensorConsent consent);
         static void ImuAccessOnComplete(ResearchModeSensorConsent consent);
         std::string MatrixToString(DirectX::XMFLOAT4X4 mat);
+        DirectX::XMMATRIX m_d2w;
+        DirectX::XMMATRIX m_l2w;
+        DirectX::XMMATRIX m_r2w;
         DirectX::XMFLOAT4X4 m_depthCameraPose;
         DirectX::XMMATRIX m_depthCameraPoseInvMatrix;
         DirectX::XMFLOAT4X4 m_longDepthCameraPose;

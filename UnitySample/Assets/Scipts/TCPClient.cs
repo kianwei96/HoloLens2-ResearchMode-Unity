@@ -13,6 +13,9 @@ public class TCPClient : MonoBehaviour
     private void Awake()
     {
         ConnectionStatusLED.material.color = Color.red;
+        #if WINDOWS_UWP
+                StartCoonection();
+        #endif
     }
     private void OnApplicationFocus(bool focus)
     {
@@ -76,46 +79,25 @@ public class TCPClient : MonoBehaviour
     }
 
     bool lastMessageSent = true;
-    public async void SendUINT16Async(ushort[] data)
+
+    public async void SendDepthAsync(ushort[] depth, ushort[] ab, long ts, string depthTransform)
     {
         if (!lastMessageSent) return;
         lastMessageSent = false;
         try
         {
             // Write header
-            dw.WriteString("s"); // header "s" 
-
-            // Write point cloud
-            dw.WriteInt32(data.Length);
-            dw.WriteBytes(UINT16ToBytes(data));
-
-            // Send out
-            await dw.StoreAsync();
-            await dw.FlushAsync();
-        }
-        catch (Exception ex)
-        {
-            SocketErrorStatus webErrorStatus = SocketError.GetStatus(ex.GetBaseException().HResult);
-            Debug.Log(webErrorStatus.ToString() != "Unknown" ? webErrorStatus.ToString() : ex.Message);
-        }
-        lastMessageSent = true;
-    }
-
-    public async void SendUINT16Async(ushort[] data1, ushort[] data2)
-    {
-        if (!lastMessageSent) return;
-        lastMessageSent = false;
-        try
-        {
-            // Write header
-            dw.WriteString("s"); // header "s" stands for it is ushort array (uint16)
+            dw.WriteString("d"); // header "s" stands for it is ushort array (uint16)
 
             // Write Length
-            dw.WriteInt32(data1.Length + data2.Length);
+            dw.WriteInt32(depthTransform.Length * sizeof(Char) / 2);
+            dw.WriteInt32(depth.Length + ab.Length);
 
             // Write actual data
-            dw.WriteBytes(UINT16ToBytes(data1));
-            dw.WriteBytes(UINT16ToBytes(data2));
+            dw.WriteBytes(UINT16ToBytes(depth));
+            dw.WriteBytes(UINT16ToBytes(ab));
+            dw.WriteInt64(ts);
+            dw.WriteString(depthTransform);
 
             // Send out
             await dw.StoreAsync();
@@ -129,14 +111,42 @@ public class TCPClient : MonoBehaviour
         lastMessageSent = true;
     }
 
-    public async void SendSpatialImageAsync(byte[] LFImage, byte[] RFImage, long ts_left, long ts_right)
+    public async void SendLeftImageAsync(byte[] LFImage, long ts_left) // not in use
     {
         if (!lastMessageSent) return;
         lastMessageSent = false;
         try
         {
             // Write header
-            dw.WriteString("f"); // header "f"
+            dw.WriteString("l"); // header "f"
+
+            // Write Length
+            dw.WriteInt32(LFImage.Length);
+            dw.WriteInt64(ts_left);
+
+            // Write actual data
+            dw.WriteBytes(LFImage);
+
+            // Send out
+            await dw.StoreAsync();
+            await dw.FlushAsync();
+        }
+        catch (Exception ex)
+        {
+            SocketErrorStatus webErrorStatus = SocketError.GetStatus(ex.GetBaseException().HResult);
+            Debug.Log(webErrorStatus.ToString() != "Unknown" ? webErrorStatus.ToString() : ex.Message);
+        }
+        lastMessageSent = true;
+    }
+
+    public async void SendSpatialImageAsync(byte[] LFImage, byte[] RFImage, long ts_left, long ts_right) // not in use
+    {
+        if (!lastMessageSent) return;
+        lastMessageSent = false;
+        try
+        {
+            // Write header
+            dw.WriteString("v"); // header "f"
 
             // Write Length
             dw.WriteInt32(LFImage.Length + RFImage.Length);
@@ -160,22 +170,25 @@ public class TCPClient : MonoBehaviour
     }
 
 
-    public async void SendSpatialImageAsync(byte[] LRFImage, long ts_left, long ts_right)
+    public async void SendSpatialImageAsync(byte[] LRFImage, long ts_left, long ts_right, string leftTransform, string rightTransform)
     {
         if (!lastMessageSent) return;
         lastMessageSent = false;
         try
         {
             // Write header
-            dw.WriteString("f"); // header "f"
+            dw.WriteString("v"); // header "f"
 
             // Write Timestamp and Length
+            dw.WriteInt32((leftTransform.Length + rightTransform.Length) * sizeof(Char) / 2);
             dw.WriteInt32(LRFImage.Length);
             dw.WriteInt64(ts_left);
             dw.WriteInt64(ts_right);
 
             // Write actual data
             dw.WriteBytes(LRFImage);
+            dw.WriteString(leftTransform);
+            dw.WriteString(rightTransform);
 
             // Send out
             await dw.StoreAsync();

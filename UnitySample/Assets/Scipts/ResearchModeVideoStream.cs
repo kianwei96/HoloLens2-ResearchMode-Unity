@@ -56,6 +56,8 @@ public class ResearchModeVideoStream : MonoBehaviour
     private byte[] RFFrameData = null;
 
     public UnityEngine.UI.Text text;
+    public UnityEngine.UI.Text text2;
+    private long prev_ts = 0;
 
     public GameObject pointCloudRendererGo;
     public Color pointColor = Color.white;
@@ -159,9 +161,34 @@ public class ResearchModeVideoStream : MonoBehaviour
     }
 
     bool startRealtimePreview = true;
-    void LateUpdate()
+
+
+    void FixedUpdate()
     {
 #if ENABLE_WINMD_SUPPORT
+        if (researchMode.RFImageUpdated() || researchMode.LFImageUpdated())
+        {
+            text2.text = researchMode.PrintLeftToWorld().ToString(); // shift up see if it unfreezes (B18-19)
+            SaveSpatialImageEvent();
+        }
+        if (researchMode.DepthMapDataUpdated())
+        {
+            SaveAHATSensorDataEvent();
+            text.text = researchMode.PrintDepthToWorld().ToString();
+        }
+        //if (researchMode.LFImageUpdated())
+        //{
+        //    SaveLeftImageEvent();
+        //}
+#endif
+    }
+
+    void LateUpdate()
+    {
+
+#if ENABLE_WINMD_SUPPORT
+
+        /*
         // update depth map texture
         if (depthSensorMode == DepthSensorMode.ShortThrow && startRealtimePreview && 
             depthPreviewPlane != null && researchMode.DepthMapTextureUpdated())
@@ -266,6 +293,7 @@ public class ResearchModeVideoStream : MonoBehaviour
                 LFMediaTexture.Apply();
             }
         }
+        
         // update RF camera texture
         if (startRealtimePreview && RFPreviewPlane != null && researchMode.RFImageUpdated())
         {
@@ -280,12 +308,17 @@ public class ResearchModeVideoStream : MonoBehaviour
                 else
                 {
                     System.Buffer.BlockCopy(frameTexture, 0, RFFrameData, 0, RFFrameData.Length);
+                    text.text = (ts - prev_ts).ToString();
                 }
 
                 RFMediaTexture.LoadRawTextureData(RFFrameData);
                 RFMediaTexture.Apply();
+                
+                //SaveSpatialImageEvent();
+                prev_ts = ts;
             }
         }
+        */
 
         // Update point cloud
         UpdatePointCloud();
@@ -353,10 +386,16 @@ public class ResearchModeVideoStream : MonoBehaviour
 #if ENABLE_WINMD_SUPPORT
         var depthMap = researchMode.GetDepthMapBuffer();
         var AbImage = researchMode.GetShortAbImageBuffer();
+        var depthTime = researchMode.GetTimestampTest();
+        var depthTrans = researchMode.PrintDepthToWorld();
+
+        Windows.Perception.PerceptionTimestamp ts_depth = Windows.Perception.PerceptionTimestampHelper.FromHistoricalTargetTime(DateTime.FromFileTime(depthTime));
+        long ts_unix_depth = ts_depth.TargetTime.ToUnixTimeMilliseconds();
+
 #if WINDOWS_UWP
         if (tcpClient != null)
         {
-            tcpClient.SendUINT16Async(depthMap, AbImage);
+            tcpClient.SendDepthAsync(depthMap, AbImage, ts_unix_depth, depthTrans);
         }
 #endif
 #endif
@@ -368,6 +407,8 @@ public class ResearchModeVideoStream : MonoBehaviour
 #if WINDOWS_UWP
         long ts_ft_left, ts_ft_right;
         var LRFImage = researchMode.GetLRFCameraBuffer(out ts_ft_left, out ts_ft_right);
+        var leftTrans = researchMode.PrintLeftToWorld();
+        var rightTrans = researchMode.PrintRightToWorld();
         Windows.Perception.PerceptionTimestamp ts_left = Windows.Perception.PerceptionTimestampHelper.FromHistoricalTargetTime(DateTime.FromFileTime(ts_ft_left));
         Windows.Perception.PerceptionTimestamp ts_right = Windows.Perception.PerceptionTimestampHelper.FromHistoricalTargetTime(DateTime.FromFileTime(ts_ft_right));
 
@@ -375,13 +416,31 @@ public class ResearchModeVideoStream : MonoBehaviour
         long ts_unix_right = ts_right.TargetTime.ToUnixTimeMilliseconds();
         long ts_unix_current = GetCurrentTimestampUnix();
 
-        text.text = "Left: " + ts_unix_left.ToString() + "\n" +
-            "Right: " + ts_unix_right.ToString() + "\n" +
-            "Current: " + ts_unix_current.ToString();
+        //text.text = "Left: " + ts_unix_left.ToString() + "\n" +
+        //    "Right: " + ts_unix_right.ToString() + "\n" +
+        //    "Current: " + ts_unix_current.ToString();
 
         if (tcpClient != null)
         {
-            tcpClient.SendSpatialImageAsync(LRFImage, ts_unix_left, ts_unix_right);
+            tcpClient.SendSpatialImageAsync(LRFImage, ts_unix_left, ts_unix_right, leftTrans, rightTrans);
+        }
+#endif
+#endif
+    }
+
+    public void SaveLeftImageEvent()
+    {
+#if ENABLE_WINMD_SUPPORT
+#if WINDOWS_UWP
+        long ts_ft_left;
+        var LFImage = researchMode.GetLFCameraBuffer(out ts_ft_left);
+        Windows.Perception.PerceptionTimestamp ts_left = Windows.Perception.PerceptionTimestampHelper.FromHistoricalTargetTime(DateTime.FromFileTime(ts_ft_left));
+
+        long ts_unix_left = ts_left.TargetTime.ToUnixTimeMilliseconds();
+
+        if (tcpClient != null)
+        {
+            tcpClient.SendLeftImageAsync(LFImage, ts_unix_left);
         }
 #endif
 #endif

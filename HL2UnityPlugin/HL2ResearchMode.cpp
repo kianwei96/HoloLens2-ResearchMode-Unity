@@ -203,20 +203,25 @@ namespace winrt::HL2UnityPlugin::implementation
                 pDepthSensorFrame->GetTimeStamp(&timestamp);
 
                 if (timestamp.HostTicks == lastTs) continue;
+                if ((timestamp.HostTicks - lastTs) < 50) continue; // enforce max 20hz // was 500,000
                 lastTs = timestamp.HostTicks;
 
                 // get tracking transform
                 Windows::Perception::Spatial::SpatialLocation transToWorld = nullptr;
-                if (pHL2ResearchMode->m_reconstructShortThrowPointCloud) 
+                //if (pHL2ResearchMode->m_reconstructShortThrowPointCloud) // depth cam transforms
+                if (true)
                 {
                     auto ts = PerceptionTimestampHelper::FromSystemRelativeTargetTime(HundredsOfNanoseconds(checkAndConvertUnsigned(timestamp.HostTicks)));
                     transToWorld = pHL2ResearchMode->m_locator.TryLocateAtTimestamp(ts, pHL2ResearchMode->m_refFrame);
                     if (transToWorld == nullptr) continue;
                 }
-
                 XMMATRIX depthToWorld = XMMatrixIdentity();
-                if (pHL2ResearchMode->m_reconstructShortThrowPointCloud)
+                //if (pHL2ResearchMode->m_reconstructShortThrowPointCloud)
+                if (true)
+                {
                     depthToWorld = pHL2ResearchMode->m_depthCameraPoseInvMatrix * SpatialLocationToDxMatrix(transToWorld);
+                    pHL2ResearchMode->m_d2w = depthToWorld;
+                }
 
                 pHL2ResearchMode->mu.lock();
                 auto roiCenterFloat = XMFLOAT3(pHL2ResearchMode->m_roiCenter[0], pHL2ResearchMode->m_roiCenter[1], pHL2ResearchMode->m_roiCenter[2]);
@@ -329,6 +334,14 @@ namespace winrt::HL2UnityPlugin::implementation
                         OutputDebugString(L"Create Space for short AbImage...\n");
                         pHL2ResearchMode->m_shortAbImage = new UINT16[outBufferCount];
                     }
+
+                    //UINT64 temp_time;
+                    //temp_time = timestamp.HostTicks;
+                    //pHL2ResearchMode->m_timeStamp = temp_time; // shifted out
+                    // below 2 replaces top 3
+                    auto ts_depth = PerceptionTimestampHelper::FromSystemRelativeTargetTime(HundredsOfNanoseconds(checkAndConvertUnsigned(timestamp.HostTicks)));
+                    pHL2ResearchMode->m_timeStamp = ts_depth.TargetTime().time_since_epoch().count();
+
                     memcpy(pHL2ResearchMode->m_shortAbImage, pAbImage, outBufferCount * sizeof(UINT16));
 
                     // save pre-processed AbImage texture (for visualization)
@@ -339,6 +352,7 @@ namespace winrt::HL2UnityPlugin::implementation
                     }
                     memcpy(pHL2ResearchMode->m_shortAbImageTexture, pAbTexture.get(), outBufferCount * sizeof(UINT8));
                 }
+                pHL2ResearchMode->m_depthDataUpdated = true;
                 pHL2ResearchMode->m_shortAbImageTextureUpdated = true;
                 pHL2ResearchMode->m_depthMapTextureUpdated = true;
                 if (pHL2ResearchMode->m_reconstructShortThrowPointCloud) pHL2ResearchMode->m_pointCloudUpdated = true;
@@ -645,19 +659,17 @@ namespace winrt::HL2UnityPlugin::implementation
                 auto ts_right = PerceptionTimestampHelper::FromSystemRelativeTargetTime(HundredsOfNanoseconds(checkAndConvertUnsigned(timestamp_right.HostTicks)));
                 
                 // uncomment the block below if their transform is needed
-                /*auto rigToWorld_l = pHL2ResearchMode->m_locator.TryLocateAtTimestamp(ts_left, pHL2ResearchMode->m_refFrame);
+                auto rigToWorld_l = pHL2ResearchMode->m_locator.TryLocateAtTimestamp(ts_left, pHL2ResearchMode->m_refFrame);
                 auto rigToWorld_r = rigToWorld_l;
                 if (ts_left.TargetTime() != ts_right.TargetTime()) {
                     rigToWorld_r = pHL2ResearchMode->m_locator.TryLocateAtTimestamp(ts_right, pHL2ResearchMode->m_refFrame);
                 }
-                
                 if (rigToWorld_l == nullptr || rigToWorld_r == nullptr)
                 {
                     continue;
                 }
-                
-                auto LfToWorld = pHL2ResearchMode->m_LFCameraPoseInvMatrix * SpatialLocationToDxMatrix(rigToWorld_l);
-				auto RfToWorld = pHL2ResearchMode->m_RFCameraPoseInvMatrix * SpatialLocationToDxMatrix(rigToWorld_r);*/
+                auto LfToWorld = pHL2ResearchMode->m_LFCameraPoseInvMatrix * SpatialLocationToDxMatrix(rigToWorld_l); // vlc transforms
+				auto RfToWorld = pHL2ResearchMode->m_RFCameraPoseInvMatrix * SpatialLocationToDxMatrix(rigToWorld_r);
 
                 // save data
                 {
@@ -676,6 +688,7 @@ namespace winrt::HL2UnityPlugin::implementation
 						OutputDebugString(L"Create Space for Left Front Image...\n");
 						pHL2ResearchMode->m_lastSpatialFrame.LFFrame.image = new UINT8[LFOutBufferCount];
 					}
+                    pHL2ResearchMode->m_l2w = LfToWorld; // brought out
 					memcpy(pHL2ResearchMode->m_lastSpatialFrame.LFFrame.image, pLFImage, LFOutBufferCount * sizeof(UINT8));
 
 					if (!pHL2ResearchMode->m_lastSpatialFrame.RFFrame.image)
@@ -683,6 +696,7 @@ namespace winrt::HL2UnityPlugin::implementation
 						OutputDebugString(L"Create Space for Right Front Image...\n");
 						pHL2ResearchMode->m_lastSpatialFrame.RFFrame.image = new UINT8[RFOutBufferCount];
 					}
+                    pHL2ResearchMode->m_r2w = RfToWorld;
 					memcpy(pHL2ResearchMode->m_lastSpatialFrame.RFFrame.image, pRFImage, RFOutBufferCount * sizeof(UINT8));
                 }
 				pHL2ResearchMode->m_LFImageUpdated = true;
@@ -932,6 +946,15 @@ namespace winrt::HL2UnityPlugin::implementation
 
     inline bool HL2ResearchMode::DepthMapTextureUpdated() { return m_depthMapTextureUpdated; }
 
+    inline bool HL2ResearchMode::DepthMapDataUpdated() {
+        return m_depthDataUpdated;
+    }
+
+    inline INT64 HL2ResearchMode::GetTimestampTest() // was uint64
+    {
+        return m_timeStamp;
+    }
+
     inline bool HL2ResearchMode::ShortAbImageTextureUpdated() { return m_shortAbImageTextureUpdated; }
 
     inline bool HL2ResearchMode::LongAbImageTextureUpdated() { return m_longAbImageTextureUpdated; }
@@ -1005,6 +1028,7 @@ namespace winrt::HL2UnityPlugin::implementation
     std::string HL2ResearchMode::MatrixToString(DirectX::XMFLOAT4X4 mat)
     {
         std::stringstream ss;
+        ss.precision(7); // changed
         for (size_t i = 0; i < 4; i++)
         {
             for (size_t j = 0; j < 4; j++)
@@ -1116,6 +1140,7 @@ namespace winrt::HL2UnityPlugin::implementation
         }
         com_array<UINT16> tempBuffer = com_array<UINT16>(m_depthMap, m_depthMap + m_depthBufferSize);
         
+        m_depthDataUpdated = false;
         return tempBuffer;
     }
 
@@ -1209,6 +1234,44 @@ namespace winrt::HL2UnityPlugin::implementation
 
         m_longAbImageTextureUpdated = false;
         return tempBuffer;
+    }
+
+
+
+    hstring HL2ResearchMode::PrintDepthToWorld()
+    {
+        std::stringstream ss;
+        XMFLOAT4X4 m_d2wf;
+        DirectX::XMStoreFloat4x4(&m_d2wf, m_d2w);
+        ss << MatrixToString(m_d2wf);
+        std::string msg = ss.str();
+        std::wstring widemsg = std::wstring(msg.begin(), msg.end());
+        OutputDebugString(widemsg.c_str());
+        return winrt::to_hstring(msg);
+    }
+
+    hstring HL2ResearchMode::PrintLeftToWorld()
+    {
+        std::stringstream ss;
+        XMFLOAT4X4 m_l2wf;
+        DirectX::XMStoreFloat4x4(&m_l2wf, m_l2w);
+        ss << MatrixToString(m_l2wf);
+        std::string msg = ss.str();
+        std::wstring widemsg = std::wstring(msg.begin(), msg.end());
+        OutputDebugString(widemsg.c_str());
+        return winrt::to_hstring(msg);
+    }
+
+    hstring HL2ResearchMode::PrintRightToWorld()
+    {
+        std::stringstream ss;
+        XMFLOAT4X4 m_r2wf;
+        DirectX::XMStoreFloat4x4(&m_r2wf, m_r2w);
+        ss << MatrixToString(m_r2wf);
+        std::string msg = ss.str();
+        std::wstring widemsg = std::wstring(msg.begin(), msg.end());
+        OutputDebugString(widemsg.c_str());
+        return winrt::to_hstring(msg);
     }
 
     com_array<uint8_t> HL2ResearchMode::GetLFCameraBuffer(int64_t& ts)

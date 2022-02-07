@@ -34,8 +34,13 @@ namespace HL2UnityPlugin
 		String PrintLFExtrinsics();
 		String PrintRFResolution();
 		String PrintRFExtrinsics();
+        INT64 GetTimestampTest();
+        String PrintDepthToWorld();
+        String PrintLeftToWorld();
+        String PrintRightToWorld();
 
         Boolean DepthMapTextureUpdated();
+        Boolean DepthMapDataUpdated();
         Boolean ShortAbImageTextureUpdated();
         Boolean LongAbImageTextureUpdated();
         Boolean PointCloudUpdated();
